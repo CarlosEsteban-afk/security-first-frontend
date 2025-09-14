@@ -1,20 +1,52 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 
 const router = useRouter()
 const isAuthenticated = ref(false)
 
+const checkAuth = async () => {
+  const token = localStorage.getItem('token')
+  if (!token) {
+    isAuthenticated.value = false
+    return
+  }
+
+  try {
+    const res = await axios.get('http://3.235.236.228:4000/auth/me', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    console.log(res.data);
+    if (res.data.error) {
+      throw new Error(res.data.error)
+    }
+
+    isAuthenticated.value = true
+  } catch (error) {
+    if (error.response && error.response.status === 401) {
+      console.error('Token inválido o expirado')
+      localStorage.removeItem('token')
+      isAuthenticated.value = false
+      router.push('/login')
+      return
+    }
+
+  }
+}
 const logout = () => {
-  // Implementar lógica de logout con AWS Cognito
+  localStorage.removeItem('token')
   isAuthenticated.value = false
   router.push('/login')
 }
 
 onMounted(() => {
-  // Verificar si el usuario está autenticado al cargar la aplicación
-  // Esto se implementará con AWS Cognito
-})</script>
+  checkAuth()
+})
+</script>
+
 
 <template>
   <div class="app">
@@ -112,9 +144,9 @@ body {
   color: var(--secondary-color);
 }
 
+
 .main {
-  min-height: calc(100vh - 130px);
-  padding: 2rem 0;
+  flex: 1;
 }
 
 .footer {
@@ -187,6 +219,12 @@ body {
 
 .text-center {
   text-align: center;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 .alert {

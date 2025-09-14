@@ -2,72 +2,52 @@
   <div class="forgot-password-page">
     <div class="form-container">
       <h2 class="form-title">Recuperar Contraseña</h2>
-      
+
       <div v-if="errorMessage" class="alert alert-danger">
         {{ errorMessage }}
       </div>
-      
+
       <div v-if="successMessage" class="alert alert-success">
         {{ successMessage }}
       </div>
-      
+
       <!-- Paso 1: Solicitar código de recuperación -->
       <div v-if="step === 1">
         <p class="form-description">
           Ingresa tu correo electrónico y te enviaremos un código para restablecer tu contraseña.
         </p>
-        
+
         <form @submit.prevent="requestCode" class="forgot-password-form">
           <div class="form-group">
             <label for="email" class="form-label">Correo electrónico</label>
-            <input 
-              type="email" 
-              id="email" 
-              v-model="form.email" 
-              class="form-input" 
-              required
-              placeholder="ejemplo@correo.com"
-            />
+            <input type="email" id="email" v-model="form.email" class="form-input" required
+              placeholder="ejemplo@correo.com" />
           </div>
-          
+
           <button type="submit" class="btn btn-block" :disabled="!form.email">
             Enviar código
           </button>
         </form>
       </div>
-      
+
       <!-- Paso 2: Ingresar código y nueva contraseña -->
       <div v-if="step === 2">
         <p class="form-description">
-          Hemos enviado un código de verificación a tu correo electrónico. 
+          Hemos enviado un código de verificación a tu correo electrónico.
           Ingresa el código y tu nueva contraseña.
         </p>
-        
+
         <form @submit.prevent="resetPassword" class="reset-password-form">
           <div class="form-group">
             <label for="code" class="form-label">Código de verificación</label>
-            <input 
-              type="text" 
-              id="code" 
-              v-model="form.code" 
-              class="form-input" 
-              required
-              placeholder="Código de 6 dígitos"
-              maxlength="6"
-              pattern="[0-9]{6}"
-            />
+            <input type="text" id="code" v-model="form.code" class="form-input" required
+              placeholder="Código de 6 dígitos" maxlength="6" pattern="[0-9]{6}" />
           </div>
-          
+
           <div class="form-group">
             <label for="newPassword" class="form-label">Nueva contraseña</label>
-            <input 
-              type="password" 
-              id="newPassword" 
-              v-model="form.newPassword" 
-              class="form-input" 
-              required
-              placeholder="Mínimo 8 caracteres"
-            />
+            <input type="password" id="newPassword" v-model="form.newPassword" class="form-input" required
+              placeholder="Mínimo 8 caracteres" />
             <div class="password-requirements">
               <p>La contraseña debe contener:</p>
               <ul>
@@ -79,27 +59,21 @@
               </ul>
             </div>
           </div>
-          
+
           <div class="form-group">
             <label for="confirmPassword" class="form-label">Confirmar contraseña</label>
-            <input 
-              type="password" 
-              id="confirmPassword" 
-              v-model="form.confirmPassword" 
-              class="form-input" 
-              required
-              placeholder="Repite tu nueva contraseña"
-            />
+            <input type="password" id="confirmPassword" v-model="form.confirmPassword" class="form-input" required
+              placeholder="Repite tu nueva contraseña" />
             <div v-if="passwordMismatch" class="password-mismatch">
               Las contraseñas no coinciden
             </div>
           </div>
-          
+
           <button type="submit" class="btn btn-block" :disabled="!isFormValid">
             Restablecer contraseña
           </button>
         </form>
-        
+
         <div class="resend-code">
           <p>¿No recibiste el código?</p>
           <button @click="requestCode" class="btn-link" :disabled="resendDisabled">
@@ -107,7 +81,7 @@
           </button>
         </div>
       </div>
-      
+
       <div class="form-footer">
         <router-link to="/login">Volver a iniciar sesión</router-link>
       </div>
@@ -118,7 +92,7 @@
 <script setup>
 import { ref, reactive, computed, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-
+import axios from 'axios'
 const router = useRouter()
 const errorMessage = ref('')
 const successMessage = ref('')
@@ -141,7 +115,7 @@ const passwordHasNumber = computed(() => /[0-9]/.test(form.newPassword))
 const passwordHasSpecial = computed(() => /[!@#$%^&*(),.?":{}|<>]/.test(form.newPassword))
 const passwordMismatch = computed(() => form.confirmPassword && form.newPassword !== form.confirmPassword)
 
-const isFormValid = computed(() => 
+const isFormValid = computed(() =>
   form.code &&
   form.code.length === 6 &&
   passwordHasMinLength.value &&
@@ -151,48 +125,58 @@ const isFormValid = computed(() =>
   passwordHasSpecial.value &&
   form.newPassword === form.confirmPassword
 )
+const requestCode = async () => {
+  errorMessage.value = ''
+  successMessage.value = ''
 
-const requestCode = () => {
-  if (!form.email) {
-    errorMessage.value = 'Por favor, ingresa tu correo electrónico'
-    return
-  }
-  
-  // Aquí se implementará la lógica para solicitar el código con AWS Cognito
-  console.log('Solicitando código para:', form.email)
-  
-  // Avanzar al paso 2
-  step.value = 2
-  successMessage.value = 'Se ha enviado un código a tu correo electrónico'
-  
-  // Configurar el temporizador para reenvío
-  resendDisabled.value = true
-  resendCountdown.value = 60
-  
-  resendTimer.value = setInterval(() => {
-    resendCountdown.value--
-    if (resendCountdown.value <= 0) {
-      clearInterval(resendTimer.value)
-      resendDisabled.value = false
+  try {
+    const response = await axios.post('http://3.235.236.228:4000/auth/forgot-password', {
+      email: form.email
+    })
+
+    if (response.data && response.data.error) {
+      throw new Error(response.data.error)
     }
-  }, 1000)
+
+    successMessage.value = 'Código enviado a tu correo electrónico'
+    step.value = 2
+
+    resendDisabled.value = true
+    resendCountdown.value = 60
+    resendTimer.value = setInterval(() => {
+      resendCountdown.value--
+      if (resendCountdown.value <= 0) {
+        clearInterval(resendTimer.value)
+        resendDisabled.value = false
+      }
+    }, 1000)
+  } catch (err) {
+    errorMessage.value = err.message || 'Error solicitando código'
+  }
 }
 
-const resetPassword = () => {
-  if (!isFormValid.value) {
-    return
+const resetPassword = async () => {
+  errorMessage.value = ''
+  successMessage.value = ''
+
+  if (!isFormValid.value) return
+
+  try {
+    const response = await axios.post('http://3.235.236.228:4000/auth/confirm-forgot-password', {
+      email: form.email,
+      code: form.code,
+      newPassword: form.newPassword,
+    })
+
+    if (response.data && response.data.error) {
+      throw new Error(response.data.error)
+    }
+
+    successMessage.value = 'Contraseña restablecida correctamente'
+    setTimeout(() => router.push('/login'), 2000)
+  } catch (err) {
+    errorMessage.value = err.message || 'Error restableciendo contraseña'
   }
-  
-  // Aquí se implementará la lógica para restablecer la contraseña con AWS Cognito
-  console.log('Restableciendo contraseña con código:', form.code)
-  
-  // Simulación de restablecimiento exitoso
-  successMessage.value = 'Contraseña restablecida correctamente'
-  
-  // Redirigir al login después de un breve retraso
-  setTimeout(() => {
-    router.push('/login')
-  }, 2000)
 }
 
 onBeforeUnmount(() => {

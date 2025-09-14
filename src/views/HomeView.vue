@@ -10,7 +10,7 @@
         </div>
       </div>
       <div class="hero-image">
-        <img src="/src/assets/logo.svg" alt="Seguridad en la nube" />
+        <img src="/src/assets/security.png" alt="Seguridad en la nube" />
       </div>
     </section>
 
